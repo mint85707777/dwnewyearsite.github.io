@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>새해 카운트다운</title>
+  <style>
+    body {
+      margin: 0;
+      font-family: 'Arial', sans-serif;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      background: linear-gradient(120deg, #000000, #2b1055, #3b3b98);
+      color: #fff;
+      overflow: hidden;
+    }
+    canvas {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      z-index: -1;
+    }
+    #countdown {
+      text-align: center;
+    }
+    h1 {
+      font-size: 4rem;
+      margin: 0 0 20px;
+      animation: fadeIn 2s ease-in-out;
+    }
+    .time {
+      font-size: 3rem;
+      font-weight: bold;
+      letter-spacing: 2px;
+    }
+    .celebrate {
+      display: none;
+      font-size: 5rem;
+      color: #ffdd57;
+      animation: zoomIn 1s ease-in-out infinite alternate;
+    }
+    @keyframes fadeIn {
+      from {
+        opacity: 0;
+      }
+      to {
+        opacity: 1;
+      }
+    }
+    @keyframes zoomIn {
+      from {
+        transform: scale(1);
+      }
+      to {
+        transform: scale(1.2);
+      }
+    }
+  </style>
+</head>
+<body>
+  <canvas id="starCanvas"></canvas>
+  <div id="countdown">
+    <h1>새해까지 남은 시간</h1>
+    <div class="time" id="timer">00:00:00</div>
+    <div class="celebrate" id="celebrate">🎉 새해 복 많이 받으세요! 🎉</div>
+  </div>
+
+  <script>
+    const canvas = document.getElementById('starCanvas');
+    const ctx = canvas.getContext('2d');
+
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+
+    const circleArray = [];
+    const DISTANCE = 100;
+    const MOUSE_DISTANCE = 150;
+
+    const mouse = {
+      x: undefined,
+      y: undefined
+    };
+
+    window.addEventListener('mousemove', (event) => {
+      mouse.x = event.x;
+      mouse.y = event.y;
+    });
+
+    class Circle {
+      constructor(x, y, radius, dx, dy) {
+        this.x = x;
+        this.y = y;
+        this.radius = radius;
+        this.dx = dx;
+        this.dy = dy;
+      }
+
+      draw() {
+        ctx.beginPath();
+        ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2, false);
+        ctx.fillStyle = 'rgba(255, 249, 228, 0.8)';
+        ctx.fill();
+        ctx.closePath();
+      }
+
+      update() {
+        if (this.x + this.radius > canvas.width || this.x - this.radius < 0) {
+          this.dx = -this.dx;
+        }
+
+        if (this.y + this.radius > canvas.height || this.y - this.radius < 0) {
+          this.dy = -this.dy;
+        }
+
+        this.x += this.dx;
+        this.y += this.dy;
+
+        this.draw();
+      }
+    }
+
+    function init() {
+      for (let i = 0; i < 100; i++) {
+        const radius = Math.random() * 3 + 1;
+        const x = Math.random() * (canvas.width - radius * 2) + radius;
+        const y = Math.random() * (canvas.height - radius * 2) + radius;
+        const dx = (Math.random() - 0.5) * 2;
+        const dy = (Math.random() - 0.5) * 2;
+
+        circleArray.push(new Circle(x, y, radius, dx, dy));
+      }
+    }
+
+    function connectStars() {
+      for (let i = 0; i < circleArray.length; i++) {
+        for (let j = i + 1; j < circleArray.length; j++) {
+          const distance = Math.sqrt(
+            Math.pow(circleArray[i].x - circleArray[j].x, 2) +
+            Math.pow(circleArray[i].y - circleArray[j].y, 2)
+          );
+
+          if (distance <= DISTANCE) {
+            const transparency = Math.max(0, 1 - distance / DISTANCE);
+            ctx.beginPath();
+            ctx.strokeStyle = `rgba(255, 249, 228, ${transparency})`;
+            ctx.moveTo(circleArray[i].x, circleArray[i].y);
+            ctx.lineTo(circleArray[j].x, circleArray[j].y);
+            ctx.stroke();
+            ctx.closePath();
+          }
+        }
+
+        // Connect stars to the mouse cursor
+        const mouseDistance = Math.sqrt(
+          Math.pow(circleArray[i].x - mouse.x, 2) +
+          Math.pow(circleArray[i].y - mouse.y, 2)
+        );
+
+        if (mouseDistance <= MOUSE_DISTANCE) {
+          const transparency = Math.max(0, 1 - mouseDistance / MOUSE_DISTANCE);
+          ctx.beginPath();
+          ctx.strokeStyle = `rgba(255, 249, 228, ${transparency})`;
+          ctx.moveTo(circleArray[i].x, circleArray[i].y);
+          ctx.lineTo(mouse.x, mouse.y);
+          ctx.stroke();
+          ctx.closePath();
+        }
+      }
+    }
+
+    function animate() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      circleArray.forEach((circle) => circle.update());
+      connectStars();
+      requestAnimationFrame(animate);
+    }
+
+    window.addEventListener('resize', () => {
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+      circleArray.length = 0;
+      init();
+    });
+
+    init();
+    animate();
+
+    function updateCountdown() {
+      const now = new Date();
+      const nextYear = now.getFullYear() + 1;
+      const newYear = new Date(`January 1, ${nextYear} 00:00:00`).getTime();
+      const timeLeft = newYear - now.getTime();
+
+      if (timeLeft <= 0) {
+        document.getElementById('timer').style.display = 'none';
+        document.getElementById('celebrate').style.display = 'block';
+        clearInterval(countdownInterval);
+        return;
+      }
+
+      const hours = Math.floor((timeLeft % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+      const minutes = Math.floor((timeLeft % (1000 * 60 * 60)) / (1000 * 60));
+      const seconds = Math.floor((timeLeft % (1000 * 60)) / 1000);
+
+      document.getElementById('timer').textContent = 
+        `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+    }
+
+    const countdownInterval = setInterval(updateCountdown, 1000);
+    updateCountdown();
+  </script>
+</body>
+</html>
